@@ -1,4 +1,4 @@
-package com.coders.location;
+package com.s.location;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -30,8 +30,10 @@ public class MainActivity extends AppCompatActivity {
     private LocationRequest locationRequest;
     private LocationCallback locationCallback;
     private android.widget.Button btnLocation;
-    private TextView txtLocation;
+    private TextView txtLocation ,txtGpsLocation;
     private android.widget.Button btnContinueLocation;
+    private android.widget.Button btnGpsLocation;
+
     private TextView txtContinueLocation;
     private StringBuilder stringBuilder;
 
@@ -42,10 +44,13 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         this.txtContinueLocation = (TextView) findViewById(R.id.txtContinueLocation);
         this.btnContinueLocation = (Button) findViewById(R.id.btnContinueLocation);
         this.txtLocation = (TextView) findViewById(R.id.txtLocation);
+        this.txtGpsLocation = (TextView) findViewById(R.id.txtGpsLocation);
         this.btnLocation = (Button) findViewById(R.id.btnLocation);
+        this.btnGpsLocation = (Button) findViewById(R.id.btnGpsLocation);
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -96,7 +101,17 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
             isContinue = false;
-            getLocation();
+            getFusedLocation();
+        });
+
+        btnGpsLocation.setOnClickListener(v -> {
+
+            if (!isGPS) {
+                Toast.makeText(this, "Please turn on GPS", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            isContinue = false;
+            getGpsLocation();
         });
 
         btnContinueLocation.setOnClickListener(v -> {
@@ -106,31 +121,8 @@ public class MainActivity extends AppCompatActivity {
             }
             isContinue = true;
             stringBuilder = new StringBuilder();
-            getLocation();
+            getFusedLocation();
         });
-    }
-
-    private void getLocation() {
-        if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                && ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
-                    AppConstants.LOCATION_REQUEST);
-
-        } else {
-            if (isContinue) {
-                mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
-            } else {
-                mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, location -> {
-                    if (location != null) {
-                        wayLatitude = location.getLatitude();
-                        wayLongitude = location.getLongitude();
-                        txtLocation.setText(String.format(Locale.US, "%s - %s", wayLatitude, wayLongitude));
-                    } else {
-                        mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
-                    }
-                });
-            }
-        }
     }
 
     @SuppressLint("MissingPermission")
@@ -171,6 +163,54 @@ public class MainActivity extends AppCompatActivity {
             if (requestCode == AppConstants.GPS_REQUEST) {
                 isGPS = true; // flag maintain before get location
             }
+        }
+    }
+
+    /**
+     * Google PLay Location Services
+     */
+    private void getFusedLocation() {
+        if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
+                    AppConstants.LOCATION_REQUEST);
+
+        } else {
+            if (isContinue) {
+                mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
+            } else {
+                mFusedLocationClient.getLastLocation().addOnSuccessListener(MainActivity.this, location -> {
+                    if (location != null) {
+                        wayLatitude = location.getLatitude();
+                        wayLongitude = location.getLongitude();
+                        txtLocation.setText(String.format(Locale.US, "%s - %s", wayLatitude, wayLongitude) + " \n " +
+                                LocationUtils.getGeoLocationAddress(MainActivity.this,wayLatitude , wayLongitude));
+                    } else {
+                        mFusedLocationClient.requestLocationUpdates(locationRequest, locationCallback, null);
+                    }
+                });
+            }
+        }
+    }
+
+    /**
+     * Android Location Service
+      */
+    private void getGpsLocation(){
+
+        LocationFinder finder;
+        double longitude = 0.0, latitude = 0.0;
+        finder = new LocationFinder(this);
+        if (finder.canGetLocation()) {
+
+            latitude = finder.getLatitude();
+            longitude = finder.getLongitude();
+            //Toast.makeText(this, "lat-lng " + latitude + " — " + longitude, Toast.LENGTH_LONG).show();
+            txtGpsLocation.setText(String.format(Locale.US, "%s - %s", latitude, longitude) + " \n " +
+                    LocationUtils.getGeoLocationAddress(MainActivity.this,latitude , longitude));
+
+        } else {
+            finder.showSettingsAlert();
         }
     }
 }

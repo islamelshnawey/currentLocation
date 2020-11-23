@@ -1,4 +1,4 @@
-package com.coders.location;
+package com.s.location;
 
 import org.junit.Test;
 
